@@ -16,3 +16,4 @@ marshmallow-sqlalchemy
 passlib
 requests_oauthlib
 python-jose
+pyopenssl

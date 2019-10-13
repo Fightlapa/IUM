@@ -3,7 +3,8 @@ from flask_restful import Resource, Api, reqparse
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from requests_oauthlib import OAuth2Session
-from passlib.hash import bcrypt
+import hashlib
+import binascii
 from random import SystemRandom
 from jose import jwt
 import requests
@@ -11,7 +12,8 @@ import os
 
 # Init app
 app = Flask(__name__)
-url = 'localhost'
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+url = 'http://127.0.0.1:5000'
 
 random = SystemRandom()
 keys = requests.get('https://www.googleapis.com/oauth2/v1/certs').json()
@@ -22,14 +24,14 @@ CONFIG = {
     'auth_url': "https://accounts.google.com/o/oauth2/auth",
     'token_url': "https://accounts.google.com/o/oauth2/token",
     'scope': [],
-    'redirect_url': f"{url}/products"
+    'redirect_url': f"{url}/logingoogle"
 }
 
 OIDC_CONFIG = {
     'jwt_pubkeys': keys,
-    'scope': ['openid'],
-    'expected_issuer': 'localhost',
-    'algorithm': 'RS512'
+    'scope': ['openid', 'email'],
+    'expected_issuer': url,
+    'algorithm': 'RS256'
 }
 
 CONFIG.update(OIDC_CONFIG)
@@ -60,6 +62,25 @@ user_parser.add_argument('password', type=str)
 def check_access_token(session):
     if 'access_token' not in session:
         return redirect('/login')
+
+def hash_password(password):
+    """Hash a password for storing."""
+    salt = hashlib.sha256(os.urandom(60)).hexdigest().encode('ascii')
+    pwdhash = hashlib.pbkdf2_hmac('sha512', password.encode('utf-8'),
+                                salt, 100000)
+    pwdhash = binascii.hexlify(pwdhash)
+    return (salt + pwdhash).decode('ascii')
+
+def verify_password(stored_password, provided_password):
+    """Verify a stored password against one provided by user"""
+    salt = stored_password[:64]
+    stored_password = stored_password[64:]
+    pwdhash = hashlib.pbkdf2_hmac('sha512',
+                                  provided_password.encode('utf-8'),
+                                  salt.encode('ascii'),
+                                  100000)
+    pwdhash = binascii.hexlify(pwdhash).decode('ascii')
+    return pwdhash == stored_password
 
 # Product Class/Model
 class Product(db.Model):
@@ -106,7 +127,7 @@ class UserCreate(Resource):
         args = user_parser.parse_args()
         un = args['username']
         password = args['password']
-        pwd_hash = bcrypt.generate_password_hash(password)
+        pwd_hash = hash_password(password)
         user = User(un, pwd_hash)
         db.session.add(user)
         db.session.commit()
@@ -117,7 +138,7 @@ class UserLoginEndpoint(Resource):
         un = args['username']
         user = User.query.filter_by(username=un).one()
         password = args['password']
-        if bcrypt.verify(password, user.password_hash):
+        if verify_password(user.password_hash, password):
             session['authed_user'] = user.username
             return redirect('/products')
         else:
@@ -152,10 +173,10 @@ class GoogleLoginEndpoint(Resource):
         id_token = token_response['id_token']
         claims = jwt.decode(id_token,
                             key=CONFIG['jwt_pubkeys'],
-                            issuer=CONFIG['issuer'],
+                            issuer=CONFIG['expected_issuer'],
                             audience=CONFIG['client_id'],
                             algorithms=CONFIG['algorithm'],
-                            access_token=response['access_token'])
+                            access_token=token_response['access_token'])
 
         assert session['nonce'] == claims['nonce']
         session['user_id'] = claims['sub']
@@ -208,4 +229,4 @@ api.add_resource(GoogleLoginEndpoint, '/logingoogle')
 api.add_resource(UserCreate, '/create')
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, threaded=False, processes=1)
+    app.run(debug=True, port=5000)
