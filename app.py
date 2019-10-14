@@ -13,7 +13,7 @@ import os
 # Init app
 app = Flask(__name__)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-url = 'http://127.0.0.1:5000'
+flask_url = 'https://127.0.0.1:5000'
 
 random = SystemRandom()
 keys = requests.get('https://www.googleapis.com/oauth2/v1/certs').json()
@@ -24,13 +24,13 @@ CONFIG = {
     'auth_url': "https://accounts.google.com/o/oauth2/auth",
     'token_url': "https://accounts.google.com/o/oauth2/token",
     'scope': [],
-    'redirect_url': f"{url}/logingoogle"
+    'redirect_url': f"{flask_url}/logingoogle"
 }
 
 OIDC_CONFIG = {
     'jwt_pubkeys': keys,
-    'scope': ['openid', 'email'],
-    'expected_issuer': url,
+    'scope': ['openid', 'https://www.googleapis.com/auth/userinfo.email'],
+    'expected_issuer': "accounts.google.com",
     'algorithm': 'RS256'
 }
 
@@ -155,6 +155,7 @@ class GoogleLoginEndpoint(Resource):
                                                 nonce=nonce)
         session['oauth2_state'] = state
         session['nonce'] = nonce
+        session.modified = True
         return redirect(url)
 
 # CALLBACK
@@ -183,7 +184,7 @@ class GoogleLoginEndpoint(Resource):
         session['user_email'] = claims['email']
         session['user_name'] = claims['name']
 
-        api_url = f"{url}/packages"
+        api_url = f"{flask_url}/packages"
         transfer = provider.get(api_url)
         return redirect('/packages')
 
