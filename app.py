@@ -2,11 +2,10 @@ from flask import Flask, jsonify, session, redirect, request
 from flask_restful import Resource, Api, reqparse
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
-from requests_oauthlib import OAuth2Session
+from google.auth.transport import requests
 import hashlib
 import binascii
 from random import SystemRandom
-from jose import jwt
 import requests
 import os
 
@@ -58,6 +57,11 @@ product_parser.add_argument('id', type=int)
 user_parser = reqparse.RequestParser()
 user_parser.add_argument('username', type=str)
 user_parser.add_argument('password', type=str)
+user_parser.add_argument('email', type=str)
+
+google_login_parser = reqparse.RequestParser()
+user_parser.add_argument('token', type=str)
+user_parser.add_argument('email', type=str)
 
 def check_access_token(session):
     if 'access_token' not in session:
@@ -98,12 +102,16 @@ class Product(db.Model):
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String, unique=True)
-    password_hash = db.Column(db.String)
+    username = db.Column(db.String, unique=True, nullable=True)
+    password_hash = db.Column(db.String, nullable=True)
+    email = db.Column(db.String, unique=True)
+    role = db.Column(db.String, unique=True)
 
-    def __init__(self, username, password_hash):
+    def __init__(self, email, username=None, password_hash=None):
         self.username = username
         self.password_hash = password_hash
+        self.email = email
+        self.role = "Maintainer"
 
 class ProductSchema(ma.Schema):
     class Meta:
@@ -128,7 +136,7 @@ class UserCreate(Resource):
         un = args['username']
         password = args['password']
         pwd_hash = hash_password(password)
-        user = User(un, pwd_hash)
+        user = User(un, pwd_hash, args['email'])
         db.session.add(user)
         db.session.commit()
 
@@ -139,54 +147,67 @@ class UserLoginEndpoint(Resource):
         user = User.query.filter_by(username=un).one()
         password = args['password']
         if verify_password(user.password_hash, password):
-            session['authed_user'] = user.username
+            session['authed_user'] = user.email
             return redirect('/products')
         else:
             return {"Login error"}
 
 class GoogleLoginEndpoint(Resource):
     def post(self):
-        provider = OAuth2Session(
-            client_id=CONFIG['client_id'],
-            scope=CONFIG['scope'],
-            redirect_uri=CONFIG['redirect_url'])
-        nonce = str(random.randint(0, 1e10))
-        url, state = provider.authorization_url(CONFIG['auth_url'],
-                                                nonce=nonce)
-        session['oauth2_state'] = state
-        session['nonce'] = nonce
-        session.modified = True
-        return redirect(url)
+        args = google_login_parser.parse_args()
+        try:
+            # Specify the CLIENT_ID of the app that accesses the backend:
+            result = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={request.json['token']}").json()
+
+
+            if result['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                raise ValueError('Wrong issuer.')
+
+            # ID token is valid. Get the user's Google Account ID from the decoded token.
+            user_email = result['email']
+            user = User.query.filter_by(email=user_email).scalar()
+
+            if user is None:
+                user = User(user_email)
+                db.session.add(user)
+                db.session.commit()
+            session['authed_user'] = user_email
+            if user_email == "googrle@gmail.com":
+                return "Manager"
+            return user.role
+        except ValueError:
+            # Invalid token
+            pass
 
 # CALLBACK
-    def get(self):
-        provider = OAuth2Session(
-            client_id=CONFIG['client_id'],
-            scope=CONFIG['scope'],
-            redirect_uri=CONFIG['redirect_url'])
-        token_response = provider.fetch_token(
-            token_url=CONFIG['token_url'],
-            client_secret=CONFIG['client_secret'],
-            authorization_response=request.url
-        )
-        session['access_token'] = token_response['access_token']
-        session['access_token_expires'] = token_response['expires_at']
-        id_token = token_response['id_token']
-        claims = jwt.decode(id_token,
-                            key=CONFIG['jwt_pubkeys'],
-                            issuer=CONFIG['expected_issuer'],
-                            audience=CONFIG['client_id'],
-                            algorithms=CONFIG['algorithm'],
-                            access_token=token_response['access_token'])
-
-        assert session['nonce'] == claims['nonce']
-        session['user_id'] = claims['sub']
-        session['user_email'] = claims['email']
-        session['user_name'] = claims['name']
-
-        api_url = f"{flask_url}/packages"
-        transfer = provider.get(api_url)
-        return redirect('/packages')
+#     def get(self):
+#         provider = OAuth2Session(
+#             client_id=CONFIG['client_id'],
+#             scope=CONFIG['scope'],
+#             redirect_uri=CONFIG['redirect_url'])
+#         token_response = provider.fetch_token(
+#             token_url=CONFIG['token_url'],
+#             client_secret=CONFIG['client_secret'],
+#             authorization_response=request.url
+#         )
+#         session['access_token'] = token_response['access_token']
+#         session['access_token_expires'] = token_response['expires_at']
+#         id_token = token_response['id_token']
+#         claims = jwt.decode(id_token,
+#                             key=CONFIG['jwt_pubkeys'],
+#                             issuer=CONFIG['expected_issuer'],
+#                             audience=CONFIG['client_id'],
+#                             algorithms=CONFIG['algorithm'],
+#                             access_token=token_response['access_token'])
+#
+#         assert session['nonce'] == claims['nonce']
+#         session['user_id'] = claims['sub']
+#         session['user_email'] = claims['email']
+#         session['user_name'] = claims['name']
+#
+#         api_url = f"{flask_url}/packages"
+#         transfer = provider.get(api_url)
+#         return redirect('/packages')
 
 class ProductEndpoint(Resource):
     def get(self, product_id):
@@ -229,5 +250,6 @@ api.add_resource(UserLoginEndpoint, '/login')
 api.add_resource(GoogleLoginEndpoint, '/logingoogle')
 api.add_resource(UserCreate, '/create')
 
+# --cert=certificate.crt --key=privateKey.key
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
