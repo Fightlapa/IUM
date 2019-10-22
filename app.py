@@ -1,3 +1,5 @@
+from datetime import timedelta
+from functools import wraps
 from flask import Flask, jsonify, session, redirect, request
 from flask_restful import Resource, Api, reqparse
 from flask_sqlalchemy import SQLAlchemy
@@ -63,9 +65,40 @@ google_login_parser = reqparse.RequestParser()
 user_parser.add_argument('token', type=str)
 user_parser.add_argument('email', type=str)
 
-def check_access_token(session):
-    if 'access_token' not in session:
-        return redirect('/login')
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+    app.permanent_session_lifetime = timedelta(minutes=5)
+
+def is_logged(session):
+    if 'authed_user' not in session:
+        return False
+    return True
+
+def return_unauthorized():
+    response = jsonify({'message': 'Unauthorized'})
+    return response, 401
+
+def check_auth():
+    session = None
+    user = None
+
+    token = request.headers.get('X-Auth-Token')
+    if token:
+        session = Session.query.filter_by(token=token).first()
+        if not session:
+            return make_error_response('Invalid session token', 401)
+
+        user = session.user
+    else:
+        auth = request.authorization
+        if auth:
+            user = User.find_by_email_or_username(auth.username)
+            if not (user and user.password == auth.password):
+                return make_error_response('Invalid username/password combination', 401)
+
+    g.current_session = session
+    g.current_user = user
 
 def hash_password(password):
     """Hash a password for storing."""
@@ -172,6 +205,8 @@ class GoogleLoginEndpoint(Resource):
                 db.session.add(user)
                 db.session.commit()
             session['authed_user'] = user_email
+            session.modified = True
+            session.permanent = True
             if user_email == "googrle@gmail.com":
                 return "Manager"
             return user.role
@@ -179,50 +214,24 @@ class GoogleLoginEndpoint(Resource):
             # Invalid token
             pass
 
-# CALLBACK
-#     def get(self):
-#         provider = OAuth2Session(
-#             client_id=CONFIG['client_id'],
-#             scope=CONFIG['scope'],
-#             redirect_uri=CONFIG['redirect_url'])
-#         token_response = provider.fetch_token(
-#             token_url=CONFIG['token_url'],
-#             client_secret=CONFIG['client_secret'],
-#             authorization_response=request.url
-#         )
-#         session['access_token'] = token_response['access_token']
-#         session['access_token_expires'] = token_response['expires_at']
-#         id_token = token_response['id_token']
-#         claims = jwt.decode(id_token,
-#                             key=CONFIG['jwt_pubkeys'],
-#                             issuer=CONFIG['expected_issuer'],
-#                             audience=CONFIG['client_id'],
-#                             algorithms=CONFIG['algorithm'],
-#                             access_token=token_response['access_token'])
-#
-#         assert session['nonce'] == claims['nonce']
-#         session['user_id'] = claims['sub']
-#         session['user_email'] = claims['email']
-#         session['user_name'] = claims['name']
-#
-#         api_url = f"{flask_url}/packages"
-#         transfer = provider.get(api_url)
-#         return redirect('/packages')
 
 class ProductEndpoint(Resource):
     def get(self, product_id):
-        check_access_token(session)
+        if not is_logged(session):
+            return return_unauthorized()
         return product_schema.jsonify(get_product(product_id))
 
     def put(self, product_id):
-        check_access_token(session)
+        if not is_logged(session):
+            return return_unauthorized()
         args = product_parser.parse_args()
         product = get_product(product_id)
         product.quantity += args['quantity']
         db.session.commit()
 
     def delete(self, product_id):
-        check_access_token(session)
+        if not is_logged(session):
+            return return_unauthorized()
         if 'authed_user' not in session:
             return redirect('/products')
         product = get_product(product_id)
@@ -232,7 +241,8 @@ class ProductEndpoint(Resource):
 
 class ProductCreate(Resource):
     def post(self):
-        check_access_token(session)
+        if not is_logged(session):
+            return return_unauthorized()
         args = product_parser.parse_args()
         product = Product(args['manufacturer_name'], args['model_name'], args['price'])
         db.session.add(product)
@@ -240,12 +250,13 @@ class ProductCreate(Resource):
 
 class ProductList(Resource):
     def get(self):
-        return check_access_token(session)
+        if not is_logged(session):
+            return return_unauthorized()
         return jsonify(products_schema.dump(Product.query.all()))
 
-api.add_resource(ProductList, '/products/')
+api.add_resource(ProductList, '/products')
 api.add_resource(ProductEndpoint, '/product/<int:product_id>')
-api.add_resource(ProductCreate, '/product/')
+api.add_resource(ProductCreate, '/product')
 api.add_resource(UserLoginEndpoint, '/login')
 api.add_resource(GoogleLoginEndpoint, '/logingoogle')
 api.add_resource(UserCreate, '/create')
