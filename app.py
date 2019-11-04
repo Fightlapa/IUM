@@ -1,10 +1,8 @@
 from datetime import timedelta
-from functools import wraps
 from flask import Flask, jsonify, session, redirect, request
 from flask_restful import Resource, Api, reqparse
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
-from google.auth.transport import requests
 import hashlib
 import binascii
 from random import SystemRandom
@@ -78,27 +76,6 @@ def is_logged(session):
 def return_unauthorized():
     response = jsonify({'message': 'Unauthorized'})
     return response, 401
-
-def check_auth():
-    session = None
-    user = None
-
-    token = request.headers.get('X-Auth-Token')
-    if token:
-        session = Session.query.filter_by(token=token).first()
-        if not session:
-            return make_error_response('Invalid session token', 401)
-
-        user = session.user
-    else:
-        auth = request.authorization
-        if auth:
-            user = User.find_by_email_or_username(auth.username)
-            if not (user and user.password == auth.password):
-                return make_error_response('Invalid username/password combination', 401)
-
-    g.current_session = session
-    g.current_user = user
 
 def hash_password(password):
     """Hash a password for storing."""
@@ -226,7 +203,12 @@ class ProductEndpoint(Resource):
             return return_unauthorized()
         args = product_parser.parse_args()
         product = get_product(product_id)
-        product.quantity += args['quantity']
+        if args['quantity'] is None:
+            product.model_name = args['model_name']
+            product.manufacturer_name = args['manufacturer_name']
+            product.price = args['price']
+        else:
+            product.quantity += args['quantity']
         db.session.commit()
 
     def delete(self, product_id):

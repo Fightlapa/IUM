@@ -23,6 +23,8 @@ import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 
+import static packages.products.BackEndRequestMaker.makeCall;
+
 public class AddProductActivity extends AppCompatActivity {
 
     @Override
@@ -69,6 +71,7 @@ public class AddProductActivity extends AppCompatActivity {
             out.write(jsonString.getBytes());
             out.flush();
             out.close();
+
             int responseCode = con.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 finish();

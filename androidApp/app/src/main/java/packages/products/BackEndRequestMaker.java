@@ -57,7 +57,7 @@ public class BackEndRequestMaker {
                     con.setRequestProperty("Accept","application/json");
                     con.setDoInput(true);
                 }
-                else if (method == "POST")
+                else if (method == "POST" || method == "PUT")
                 {
                     con.setDoOutput(true);
                 }
@@ -68,7 +68,7 @@ public class BackEndRequestMaker {
                 {
 
                 }
-                else if (method == "POST")
+                else if (method == "POST" || method == "PUT")
                 {
                     DataOutputStream out = new DataOutputStream(con.getOutputStream());
                     out.write(jsonString.getBytes());
