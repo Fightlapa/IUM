@@ -38,7 +38,7 @@ public class LoginActivity extends AppCompatActivity{
                 .build();
 
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
-
+        mGoogleSignInClient.signOut();
         findViewById(R.id.sign_in_button).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -49,6 +49,7 @@ public class LoginActivity extends AppCompatActivity{
 
     private void signIn() {
         Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+
         startActivityForResult(signInIntent, RC_SIGN_IN);
     }
 
@@ -61,7 +62,7 @@ public class LoginActivity extends AppCompatActivity{
         {
             Intent intent = new Intent(this, MainActivity.class);
             try {
-                Thread.sleep(500);
+                Thread.sleep(10000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

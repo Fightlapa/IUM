@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -35,6 +36,20 @@ public class ModifyProductActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.submitQuantityChange).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AddQuantity();
+            }
+        });
+
+        findViewById(R.id.deleteProduct).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                DeleteProduct();
+            }
+        });
+
         Intent i = getIntent();
         product = (Product)i.getSerializableExtra("Product");
 
@@ -62,6 +77,39 @@ public class ModifyProductActivity extends AppCompatActivity {
         }
 
         BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product/" + product.uid, "PUT", jsonString);
+        if (result.code == HttpURLConnection.HTTP_OK) {
+            finish();
+        }
+    }
+
+    private void AddQuantity() {
+        final String quantity = ((EditText) findViewById(R.id.quantityChangeInput)).getText().toString();
+        final String currentQuantity = ((EditText) findViewById(R.id.quantityText)).getText().toString();
+
+        if (Integer.parseInt(currentQuantity) + Integer.parseInt(quantity) < 0)
+        {
+            Toast.makeText(this, "Quantity will be lower than 0!", Toast.LENGTH_SHORT).show();
+        }
+        else
+        {
+            String jsonString = null;
+            try {
+                jsonString = new JSONObject()
+                        .put("quantity", quantity)
+                        .toString();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product/" + product.uid, "PUT", jsonString);
+            if (result.code == HttpURLConnection.HTTP_OK) {
+                finish();
+            }
+        }
+    }
+
+    private void DeleteProduct() {
+        BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product/" + product.uid, "DELETE", "");
         if (result.code == HttpURLConnection.HTTP_OK) {
             finish();
         }

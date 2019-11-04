@@ -49,39 +49,16 @@ public class AddProductActivity extends AppCompatActivity {
             @Override
             public void run() {
         try {
-            URL url = new URL("http://10.0.2.2:5000/product");
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("POST");
-            con.setDoOutput(true);
-            //con.setRequestProperty("Cookie", "name=value");
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setRequestProperty("Accept", "application/json");
-            con.setDoOutput(true);
-            con.setDoInput(true);
-            con.connect();
-
             String jsonString = new JSONObject()
                     .put("manufacturer_name", manufacturer)
                     .put("model_name", model)
                     .put("price", price)
                     .toString();
 
-
-            DataOutputStream out = new DataOutputStream(con.getOutputStream());
-            out.write(jsonString.getBytes());
-            out.flush();
-            out.close();
-
-            int responseCode = con.getResponseCode();
-            if (responseCode == HttpURLConnection.HTTP_OK) {
+            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product", "POST", jsonString);
+            if (result.code == HttpURLConnection.HTTP_OK) {
                 finish();
             }
-        } catch (ProtocolException e) {
-            e.printStackTrace();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
         } catch (JSONException e) {
             e.printStackTrace();
         }

@@ -164,11 +164,9 @@ class UserLoginEndpoint(Resource):
 
 class GoogleLoginEndpoint(Resource):
     def post(self):
-        args = google_login_parser.parse_args()
         try:
             # Specify the CLIENT_ID of the app that accesses the backend:
             result = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={request.json['token']}").json()
-
 
             if result['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
                 raise ValueError('Wrong issuer.')
@@ -181,9 +179,8 @@ class GoogleLoginEndpoint(Resource):
                 user = User(user_email)
                 db.session.add(user)
                 db.session.commit()
-            session['authed_user'] = user_email
-            session.modified = True
             session.permanent = True
+            session['authed_user'] = user_email
             if user_email == "googrle@gmail.com":
                 return "Manager"
             return user.role

@@ -19,6 +19,7 @@ import java.util.Map;
 
 import static android.view.View.GONE;
 import static packages.products.BackEndRequestMaker.cookieManager;
+import static packages.products.BackEndRequestMaker.makeCall;
 import static packages.products.BackEndRequestMaker.sessionToken;
 
 public class GoogleSignIn {
@@ -40,6 +41,8 @@ public class GoogleSignIn {
             // The Task returned from this call is always completed, no need to attach
             // a listener.
             Task<GoogleSignInAccount> task = com.google.android.gms.auth.api.signin.GoogleSignIn.getSignedInAccountFromIntent(data);
+            handleSignInResult(task);
+            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/products", "GET", "");
             handleSignInResult(task);
         }
     }

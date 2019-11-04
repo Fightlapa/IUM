@@ -52,7 +52,7 @@ public class BackEndRequestMaker {
                 HttpURLConnection con = (HttpURLConnection)url.openConnection();
                 con.setRequestMethod(method);
                 con.setRequestProperty("Content-Type", "application/json");
-                if (method == "GET")
+                if (method == "GET" || method == "DELETE")
                 {
                     con.setRequestProperty("Accept","application/json");
                     con.setDoInput(true);
@@ -60,26 +60,13 @@ public class BackEndRequestMaker {
                 else if (method == "POST" || method == "PUT")
                 {
                     con.setDoOutput(true);
-                }
-
-
-                //con.connect();
-                if (method == "GET")
-                {
-
-                }
-                else if (method == "POST" || method == "PUT")
-                {
                     DataOutputStream out = new DataOutputStream(con.getOutputStream());
                     out.write(jsonString.getBytes());
                     out.flush();
                     out.close();
                 }
 
-
-
                 responseCode = con.getResponseCode();
-
 
                 if (responseCode == HttpURLConnection.HTTP_OK)
                 {
