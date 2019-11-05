@@ -28,7 +28,7 @@ public class Product implements Serializable {
     @Override
     public String toString()
     {
-        return manufacturer + " " + model + " " + quantity + " " + price;
+        return manufacturer + ", " + model + ", " + quantity + ", " + price + "$";
     }
 }
 

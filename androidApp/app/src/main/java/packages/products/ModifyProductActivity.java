@@ -20,6 +20,7 @@ import java.net.ProtocolException;
 import java.net.URL;
 
 import static packages.products.BackEndRequestMaker.makeCall;
+import static packages.products.GoogleSignIn.loggedUser;
 
 public class ModifyProductActivity extends AppCompatActivity {
 
@@ -43,12 +44,20 @@ public class ModifyProductActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(R.id.deleteProduct).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                DeleteProduct();
-            }
-        });
+        if (loggedUser == GoogleSignIn.LoggedUser.Manager)
+        {
+            findViewById(R.id.deleteProduct).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    DeleteProduct();
+                }
+            });
+        }
+        else
+        {
+            findViewById(R.id.deleteProduct).setEnabled(false);
+        }
+
 
         Intent i = getIntent();
         product = (Product)i.getSerializableExtra("Product");
@@ -84,9 +93,8 @@ public class ModifyProductActivity extends AppCompatActivity {
 
     private void AddQuantity() {
         final String quantity = ((EditText) findViewById(R.id.quantityChangeInput)).getText().toString();
-        final String currentQuantity = ((EditText) findViewById(R.id.quantityText)).getText().toString();
 
-        if (Integer.parseInt(currentQuantity) + Integer.parseInt(quantity) < 0)
+        if (product.quantity + Integer.parseInt(quantity) < 0)
         {
             Toast.makeText(this, "Quantity will be lower than 0!", Toast.LENGTH_SHORT).show();
         }

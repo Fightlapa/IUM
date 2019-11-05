@@ -3,6 +3,7 @@ package packages.products.ui.login;
 import android.content.Intent;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.view.View;
@@ -11,6 +12,8 @@ import android.widget.Button;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 
 import packages.products.MainActivity;
 import packages.products.R;
@@ -30,7 +33,20 @@ public class LoginActivity extends AppCompatActivity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
+        final LoginActivity thisObj = this;
+        findViewById(R.id.logOut).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+            mGoogleSignInClient.signOut().addOnCompleteListener(thisObj, new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    findViewById(R.id.sign_in_button).setEnabled(true);
+                    findViewById(R.id.logOut).setEnabled(false);
+                }
+            });
 
+            }
+        });
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(clientId)
@@ -60,12 +76,10 @@ public class LoginActivity extends AppCompatActivity{
         googleSignIn.OnIntentStart(requestCode, data);
         if (googleSignIn.loggedUser != packages.products.GoogleSignIn.LoggedUser.None)
         {
+            findViewById(R.id.logOut).setEnabled(true);
+            findViewById(R.id.sign_in_button).setEnabled(false);
             Intent intent = new Intent(this, MainActivity.class);
-            try {
-                Thread.sleep(10000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+
             startActivity(intent);
         }
     }

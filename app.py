@@ -115,7 +115,7 @@ class User(db.Model):
     username = db.Column(db.String, unique=True, nullable=True)
     password_hash = db.Column(db.String, nullable=True)
     email = db.Column(db.String, unique=True)
-    role = db.Column(db.String, unique=True)
+    role = db.Column(db.String)
 
     def __init__(self, email, username=None, password_hash=None):
         self.username = username
@@ -136,6 +136,14 @@ db.init_app(app)
 db.create_all()
 
 api = Api(app)
+
+user = User.query.filter_by(email="googrle@gmail.com").scalar()
+
+if user is None:
+    user = User("googrle@gmail.com")
+    user.role = "Manager"
+    db.session.add(user)
+    db.session.commit()
 
 def get_product(product_id):
     return Product.query.get(product_id)

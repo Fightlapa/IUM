@@ -26,7 +26,7 @@ public class GoogleSignIn {
     static final String COOKIES_HEADER = "Set-Cookie";
     public static int RC_SIGN_IN = 100;
     public static GoogleSignInAccount googleAccount;
-    public LoggedUser loggedUser = LoggedUser.None;
+    public static LoggedUser loggedUser = LoggedUser.None;
 
     public enum LoggedUser{
         None,
@@ -89,7 +89,7 @@ public class GoogleSignIn {
                         String line;
                         BufferedReader br=new BufferedReader(new InputStreamReader(con.getInputStream()));
                         line=br.readLine();
-                        if (line.equals("Maintainer"))
+                        if (line.equals("\"Maintainer\""))
                         {
                             loggedUser = LoggedUser.Maintainer;
                         }
