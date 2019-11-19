@@ -18,6 +18,12 @@
             android:layout_height="wrap_content"
             android:text="Add Product" />
 
+        <Button
+            android:id="@+id/changeOnlineStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Online" />
+
         <ListView
             android:layout_width="match_parent"
             android:layout_height="match_parent"

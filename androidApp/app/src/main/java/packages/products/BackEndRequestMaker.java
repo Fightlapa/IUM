@@ -12,21 +12,51 @@ import java.io.InputStreamReader;
 import java.net.CookieManager;
 import java.net.HttpURLConnection;
 import java.net.URL;
-
-import packages.products.ui.login.LoginActivity;
-
-
-
+import java.util.ArrayList;
 
 public class BackEndRequestMaker {
 
     public static String sessionToken = null;
     public static CookieManager cookieManager = new CookieManager();
+    public static boolean isOnline = true;
+
+    public static ArrayList<CallData> requestList = new ArrayList<CallData>();
+
+    public static class CallData {
+        public String urlString;
+        public String method;
+        public String jsonString;
+    }
 
     public static class Response {
-        String body;
-        int code;
+        String body = "";
+        int code = -1;
     }
+
+    public static boolean isOnline()
+    {
+        return isOnline;
+    }
+
+    public static void changeOnlineStatus()
+    {
+        isOnline ^= true;
+    }
+
+    public static String getOnlineStatusString()
+    {
+        String returnString;
+        if (isOnline)
+        {
+            returnString = "Online";
+        }
+        else
+        {
+            returnString = "Offline";
+        }
+        return returnString;
+    }
+
 
     public static class CallMaker implements Runnable {
         private volatile int responseCode;
@@ -36,6 +66,8 @@ public class BackEndRequestMaker {
         private String method;
         private String jsonString;
 
+
+
         CallMaker(final String urlString, final String method, final String jsonString)
         {
 
@@ -43,6 +75,8 @@ public class BackEndRequestMaker {
             this.method = method;
             this.jsonString = jsonString;
         }
+
+
 
         @Override
         public void run() {
@@ -106,21 +140,34 @@ public class BackEndRequestMaker {
     }
 
 
+
     public static Response makeCall(final String urlString, final String method, final String jsonString)
     {
-        CallMaker callMaker = new CallMaker(urlString, method, jsonString);
-        Thread thread = new Thread(callMaker);
-
-        thread.start();
-        try {
-            thread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
         Response response = new Response();
+        if (isOnline)
+        {
+            CallMaker callMaker = new CallMaker(urlString, method, jsonString);
+            Thread thread = new Thread(callMaker);
 
-        response.body = callMaker.getReturnBody();
-        response.code = callMaker.getResponseCode();
+            thread.start();
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+
+            response.body = callMaker.getReturnBody();
+            response.code = callMaker.getResponseCode();
+        }
+        else
+        {
+            CallData callData = new CallData();
+            callData.jsonString = jsonString;
+            callData.method = method;
+            callData.urlString = urlString;
+            requestList.add(callData);
+        }
         return response;
     }
 }

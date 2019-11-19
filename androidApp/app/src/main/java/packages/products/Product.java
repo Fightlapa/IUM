@@ -14,16 +14,16 @@ public class Product implements Serializable {
     public int uid;
 
     @ColumnInfo(name = "Manufacturer")
-    public String manufacturer;
+    public String manufacturer = null;
 
     @ColumnInfo(name = "Model")
-    public String model;
+    public String model = null;
 
     @ColumnInfo(name = "Quantity")
-    public int quantity;
+    public int quantity = 0;
 
     @ColumnInfo(name = "Price")
-    public double price;
+    public double price = 0;
 
     @Override
     public String toString()

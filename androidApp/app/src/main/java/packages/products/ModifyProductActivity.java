@@ -5,21 +5,9 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.net.URL;
-
-import static packages.products.BackEndRequestMaker.makeCall;
 import static packages.products.GoogleSignIn.loggedUser;
 
 public class ModifyProductActivity extends AppCompatActivity {
@@ -70,56 +58,29 @@ public class ModifyProductActivity extends AppCompatActivity {
     }
 
     private void ModifyProduct() {
-        final String manufacturer = ((EditText) findViewById(R.id.manufacturerInput)).getText().toString();
-        final String model = ((EditText) findViewById(R.id.modelInput)).getText().toString();
-        final String price = ((EditText) findViewById(R.id.priceInput)).getText().toString();
+        Product modifiedProduct = new Product();
+        modifiedProduct.manufacturer = ((EditText) findViewById(R.id.manufacturerInput)).getText().toString();
+        modifiedProduct.model = ((EditText) findViewById(R.id.modelInput)).getText().toString();
+        modifiedProduct.price = Double.valueOf(((EditText) findViewById(R.id.priceInput)).getText().toString());
+        modifiedProduct.uid = product.uid;
 
-        String jsonString = null;
-        try {
-            jsonString = new JSONObject()
-                    .put("manufacturer_name", manufacturer)
-                    .put("model_name", model)
-                    .put("price", price)
-                    .toString();
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+        ProductRepository.modify(modifiedProduct);
 
-        BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product/" + product.uid, "PUT", jsonString);
-        if (result.code == HttpURLConnection.HTTP_OK) {
-            finish();
-        }
+        finish();
     }
 
     private void AddQuantity() {
-        final String quantity = ((EditText) findViewById(R.id.quantityChangeInput)).getText().toString();
+        Product modifiedProduct = new Product();
+        modifiedProduct.quantity = Integer.valueOf(((EditText) findViewById(R.id.quantityChangeInput)).getText().toString());
+        modifiedProduct.uid = product.uid;
 
-        if (product.quantity + Integer.parseInt(quantity) < 0)
-        {
-            Toast.makeText(this, "Quantity will be lower than 0!", Toast.LENGTH_SHORT).show();
-        }
-        else
-        {
-            String jsonString = null;
-            try {
-                jsonString = new JSONObject()
-                        .put("quantity", quantity)
-                        .toString();
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
+        ProductRepository.modify(modifiedProduct);
 
-            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product/" + product.uid, "PUT", jsonString);
-            if (result.code == HttpURLConnection.HTTP_OK) {
-                finish();
-            }
-        }
+        finish();
     }
 
     private void DeleteProduct() {
-        BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product/" + product.uid, "DELETE", "");
-        if (result.code == HttpURLConnection.HTTP_OK) {
-            finish();
-        }
+        ProductRepository.delete(product);
+        finish();
     }
 }

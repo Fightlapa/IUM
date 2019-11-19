@@ -75,7 +75,8 @@ def is_logged(session):
 
 def return_unauthorized():
     response = jsonify({'message': 'Unauthorized'})
-    return response, 401
+    response.status_code = 401
+    return response
 
 def hash_password(password):
     """Hash a password for storing."""
