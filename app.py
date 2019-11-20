@@ -235,6 +235,8 @@ class ProductCreate(Resource):
         product = Product(args['manufacturer_name'], args['model_name'], args['price'])
         db.session.add(product)
         db.session.commit()
+        db.session.refresh(product)
+        return product.id
 
 class ProductList(Resource):
     def get(self):

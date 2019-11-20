@@ -11,15 +11,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static packages.products.BackEndRequestMaker.makeCall;
+import static packages.products.BackEndRequestMaker.saveCall;
 import static packages.products.MainActivity.productDatabase;
 
 public class ProductRepository {
 
     public static List<Product> getAll()
     {
-        BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/products", "GET", "");
-        ArrayList<Product> list = new ArrayList<Product>();
-        if (result.code == 200) {
+
+        final ArrayList<Product> list = new ArrayList<Product>();
+        if (BackEndRequestMaker.isOnline())
+        {
+            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/products", "GET", null);
             productDatabase.clearAllTables();
             try {
                 JSONArray jsonArray = new JSONArray(result.body.trim());
@@ -40,7 +43,15 @@ public class ProductRepository {
         }
         else
         {
-            list = (ArrayList)productDatabase.ProductDao().getAll();
+            Thread thread = new Thread(() -> {
+                list.addAll((ArrayList)productDatabase.ProductDao().getAll());
+            });
+            thread.start();
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         return list;
     }
@@ -49,16 +60,29 @@ public class ProductRepository {
     {
         try
         {
-            String jsonString = new JSONObject()
+            JSONObject jsonString = new JSONObject()
                     .put("manufacturer_name", product.manufacturer)
                     .put("model_name", product.model)
-                    .put("price", product.price)
-                    .toString();
+                    .put("price", product.price);
 
-            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product", "POST", jsonString);
-            if (result.code != HttpURLConnection.HTTP_OK) {
-                productDatabase.ProductDao().insert(product);
+            if (BackEndRequestMaker.isOnline())
+            {
+                BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product", "POST", jsonString);
             }
+            else
+            {
+                Thread thread = new Thread(() -> {
+                    long productId = productDatabase.ProductDao().insert(product);
+                    saveCall("http://10.0.2.2:5000/product", "POST", jsonString, productId);
+                });
+                thread.start();
+                try {
+                    thread.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -66,42 +90,60 @@ public class ProductRepository {
 
     public static void modify(Product product)
     {
-        String jsonString = null;
-        if (product.model != null)
-        {
-            try {
+        JSONObject jsonString = null;
+        try {
+            if (product.model != null)
+            {
                 jsonString = new JSONObject()
                         .put("manufacturer_name", product.manufacturer)
                         .put("model_name", product.model)
-                        .put("price", product.price)
-                        .toString();
-            } catch (JSONException e) {
-                e.printStackTrace();
+                        .put("price", product.price);
             }
-
-
+            else
+            {
+                jsonString = new JSONObject()
+                        .put("quantity", product.quantity);
+            }
+        }
+        catch (JSONException e) {
+            e.printStackTrace();
+        }
+        if (BackEndRequestMaker.isOnline()) {
+            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product/" + product.uid, "PUT", jsonString);
         }
         else
         {
+            JSONObject finalJsonString = jsonString;
+            Thread thread = new Thread(() -> {
+                productDatabase.ProductDao().update(product);
+                saveCall("http://10.0.2.2:5000/product/", "PUT", finalJsonString, product.uid);
+            });
+            thread.start();
             try {
-                jsonString = new JSONObject()
-                        .put("quantity", product.quantity)
-                        .toString();
-            } catch (JSONException e) {
+                thread.join();
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        }
-        BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product/" + product.uid, "PUT", jsonString);
-        if (result.code != HttpURLConnection.HTTP_OK) {
-            // TODO
         }
     }
 
     public static void delete(Product product)
     {
-        BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product/" + product.uid, "DELETE", "");
-        if (result.code == HttpURLConnection.HTTP_OK) {
-            //TODO
+        if (BackEndRequestMaker.isOnline()) {
+            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/product/" + product.uid, "DELETE", null);
+        }
+        else
+        {
+            Thread thread = new Thread(() -> {
+                productDatabase.ProductDao().delete(product);
+                saveCall("http://10.0.2.2:5000/product/", "DELETE", null, product.uid);
+            });
+            thread.start();
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 

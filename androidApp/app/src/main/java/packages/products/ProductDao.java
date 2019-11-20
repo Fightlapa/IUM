@@ -1,11 +1,13 @@
 package packages.products;
 
+import java.lang.annotation.Target;
 import java.util.List;
 
 import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Delete;
 import androidx.room.Query;
+import androidx.room.Update;
 
 
 @Dao
@@ -14,7 +16,10 @@ public interface ProductDao {
     List<Product> getAll();
 
     @Insert
-    void insert(Product Product);
+    long insert(Product Product);
+
+    @Update
+    void update(Product product);
 
     @Delete
     void delete(Product Product);

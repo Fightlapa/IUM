@@ -58,23 +58,19 @@ public class ModifyProductActivity extends AppCompatActivity {
     }
 
     private void ModifyProduct() {
-        Product modifiedProduct = new Product();
-        modifiedProduct.manufacturer = ((EditText) findViewById(R.id.manufacturerInput)).getText().toString();
-        modifiedProduct.model = ((EditText) findViewById(R.id.modelInput)).getText().toString();
-        modifiedProduct.price = Double.valueOf(((EditText) findViewById(R.id.priceInput)).getText().toString());
-        modifiedProduct.uid = product.uid;
+        product.manufacturer = ((EditText) findViewById(R.id.manufacturerInput)).getText().toString();
+        product.model = ((EditText) findViewById(R.id.modelInput)).getText().toString();
+        product.price = Double.valueOf(((EditText) findViewById(R.id.priceInput)).getText().toString());
 
-        ProductRepository.modify(modifiedProduct);
+        ProductRepository.modify(product);
 
         finish();
     }
 
     private void AddQuantity() {
-        Product modifiedProduct = new Product();
-        modifiedProduct.quantity = Integer.valueOf(((EditText) findViewById(R.id.quantityChangeInput)).getText().toString());
-        modifiedProduct.uid = product.uid;
+        product.quantity = Integer.valueOf(((EditText) findViewById(R.id.quantityChangeInput)).getText().toString());
 
-        ProductRepository.modify(modifiedProduct);
+        ProductRepository.modify(product);
 
         finish();
     }

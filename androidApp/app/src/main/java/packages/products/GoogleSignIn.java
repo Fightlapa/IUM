@@ -42,7 +42,7 @@ public class GoogleSignIn {
             // a listener.
             Task<GoogleSignInAccount> task = com.google.android.gms.auth.api.signin.GoogleSignIn.getSignedInAccountFromIntent(data);
             handleSignInResult(task);
-            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/products", "GET", "");
+            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/products", "GET", null);
             handleSignInResult(task);
         }
     }
