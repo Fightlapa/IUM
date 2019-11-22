@@ -19,6 +19,18 @@
         android:text="Log out"
         android:enabled="false"/>
 
+    <Button
+        android:id="@+id/startOffline"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Start Offline"
+        android:layout_gravity="start"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintVertical_bias="0.2"
+        />
+
     <com.google.android.gms.common.SignInButton
         android:id="@+id/sign_in_button"
         android:layout_width="wrap_content"

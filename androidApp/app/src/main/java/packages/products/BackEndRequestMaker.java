@@ -17,20 +17,13 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import static packages.products.MainActivity.productDatabase;
+
 public class BackEndRequestMaker {
 
     public static String sessionToken = null;
     public static CookieManager cookieManager = new CookieManager();
     public static boolean isOnline = true;
-
-    public static Queue<CallData> requestList = new LinkedList<CallData>();
-
-    public static class CallData {
-        public String urlString;
-        public String method;
-        public JSONObject jsonObject;
-        public Integer localProductId = -1;
-    }
 
     public static class Response {
         String body = "";
@@ -47,23 +40,31 @@ public class BackEndRequestMaker {
         isOnline ^= true;
         if (isOnline)
         {
-            HashMap<Integer, Integer> localRemoteIdMapping = new HashMap<>() ;
-            while (!requestList.isEmpty())
+            sendPendingRequests();
+        }
+    }
+
+    public static void sendPendingRequests() {
+        for (Request pendingRequest : ProductRepository.getAllRequests())
+        {
+            if (pendingRequest.method.equals("POST"))
             {
-                CallData pendingRequest = requestList.remove();
-
-                if (pendingRequest.method == "POST")
-                {
-                    Response response = makeCall(pendingRequest.urlString, pendingRequest.method, pendingRequest.jsonObject);
-                    localRemoteIdMapping.put(new Integer((int) pendingRequest.localProductId), Integer.parseInt(response.body));
-                }
-                else if (pendingRequest.method == "PUT" || pendingRequest.method == "DELETE")
-                {
-                    Integer newID = localRemoteIdMapping.get(pendingRequest.localProductId);
-                    makeCall(pendingRequest.urlString + newID, pendingRequest.method, pendingRequest.jsonObject);
-                }
-
+                Response response = makeCall(pendingRequest.url, pendingRequest.method, pendingRequest.jsonString);
+                Product product = ProductRepository.getByLocalID(pendingRequest.localProductId);
+                product.serverProductId = Integer.parseInt(response.body);
+                ProductRepository.updateLocalProduct(product);
             }
+            else if (pendingRequest.method.equals("PUT"))
+            {
+                Product product = ProductRepository.getByLocalID(pendingRequest.localProductId);
+                makeCall(pendingRequest.url + product.serverProductId, pendingRequest.method, pendingRequest.jsonString);
+            }
+            if (pendingRequest.method.equals("DELETE") && pendingRequest.serverProductId != -1)
+            {
+                makeCall(pendingRequest.url + pendingRequest.serverProductId, pendingRequest.method, pendingRequest.jsonString);
+            }
+            ProductRepository.deleteRequest(pendingRequest);
+
         }
     }
 
@@ -111,7 +112,7 @@ public class BackEndRequestMaker {
                 con.setRequestProperty("Content-Type", "application/json");
                 con.setRequestProperty("Accept","application/json");
                 con.setDoInput(true);
-                if (method == "POST" || method == "PUT")
+                if (method.equals("POST") || method.equals("PUT"))
                 {
                     con.setDoOutput(true);
                     DataOutputStream out = new DataOutputStream(con.getOutputStream());
@@ -158,20 +159,12 @@ public class BackEndRequestMaker {
 
 
 
-    public static Response makeCall(final String urlString, final String method, final JSONObject jsonObject)
+    public static Response makeCall(final String urlString, final String method, final String jsonString)
     {
         Response response = new Response();
 
         assert isOnline;
-        String jsonString;
-        if (jsonObject != null)
-        {
-            jsonString = jsonObject.toString();
-        }
-        else
-        {
-            jsonString = "";
-        }
+
         CallMaker callMaker = new CallMaker(urlString, method, jsonString);
         Thread thread = new Thread(callMaker);
 
@@ -187,14 +180,18 @@ public class BackEndRequestMaker {
 
         return response;
     }
-    public static void saveCall(final String urlString, final String method, final JSONObject jsonObject, long localProductId)
+    public static void saveCall(final String urlString, final String method, final JSONObject jsonObject, long localProductId, long serverProductId)
     {
-        CallData callData = new CallData();
-        callData.jsonObject = jsonObject;
+        Request callData = new Request();
+        if (jsonObject != null)
+        {
+            callData.jsonString = jsonObject.toString();
+        }
         callData.method = method;
-        callData.urlString = urlString;
-        callData.localProductId = Integer.valueOf((int) localProductId);
-        requestList.add(callData);
+        callData.url = urlString;
+        callData.localProductId = (int) localProductId;
+        callData.serverProductId = (int) serverProductId;
+        productDatabase.RequestDao().insert(callData);
     }
 
 }

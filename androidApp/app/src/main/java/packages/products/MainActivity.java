@@ -38,11 +38,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        productDatabase = Room.databaseBuilder(getApplicationContext(), ProductDatabase.class, "products-db").build();
-
         setContentView(R.layout.activity_main);
 
+        ((Button)findViewById(R.id.changeOnlineStatus)).setText(BackEndRequestMaker.getOnlineStatusString());
+        productDatabase = Room.databaseBuilder(getApplicationContext(), ProductDatabase.class, "products-db").fallbackToDestructiveMigration().build();
 
         listView = findViewById(R.id.Productlist);
         arrayAdapter = new ArrayAdapter<Product>
@@ -75,11 +74,9 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 BackEndRequestMaker.changeOnlineStatus();
                 ((Button)findViewById(R.id.changeOnlineStatus)).setText(BackEndRequestMaker.getOnlineStatusString());
+                updateProductList();
             }
         });
-
-        //InitializeLocalDatabase();
-
     }
 
     public ProductDatabase getDatabase() {
@@ -95,39 +92,27 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume()
     {
         super.onResume();
-        getProducts();
+        updateProductList();
     }
 
-    private void getProducts()
-    {
-        new ProductAsyncTask(this, BackEndRequestMaker.isOnline()).execute();
-    }
+    private void updateProductList() {
+        List<Product> productList = ProductRepository.getAll();
+        MainActivity thisActivity = this;
+        Thread thread = new Thread(() -> {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    thisActivity.getArrayAdapter().clear();
+                    thisActivity.getArrayAdapter().addAll(productList);
+                }
+            });
 
-    private static class ProductAsyncTask extends AsyncTask<Void, Void, List<Product>> {
-
-        //Prevent leak
-        private WeakReference<MainActivity> weakActivity;
-        private boolean isOnline;
-
-        public ProductAsyncTask(MainActivity activity, boolean isOnline) {
-            weakActivity = new WeakReference<>(activity);
-            this.isOnline = isOnline;
-        }
-
-        @Override
-        protected List<Product> doInBackground(Void... params) {
-            return ProductRepository.getAll();
-        }
-
-        @Override
-        protected void onPostExecute(List<Product> list) {
-            Activity activity = weakActivity.get();
-            if (activity == null) {
-                return;
-            }
-            ((MainActivity) activity).getArrayAdapter().clear();
-            ((MainActivity) activity).getArrayAdapter().addAll(list);
+        });
+        thread.start();
+        try {
+            thread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
-
 }

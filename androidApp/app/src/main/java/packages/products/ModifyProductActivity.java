@@ -55,6 +55,8 @@ public class ModifyProductActivity extends AppCompatActivity {
         ((EditText) findViewById(R.id.priceInput)).setText(Double.toString(product.price));
         String quantityText = ((TextView) findViewById(R.id.quantityText)).getText().toString();
         ((TextView) findViewById(R.id.quantityText)).setText(quantityText + " " + product.quantity);
+        ((TextView) findViewById(R.id.localID)).setText(Integer.toString(product.getId()));
+        ((TextView) findViewById(R.id.serverID)).setText(Integer.toString(product.serverProductId));
     }
 
     private void ModifyProduct() {
@@ -62,15 +64,15 @@ public class ModifyProductActivity extends AppCompatActivity {
         product.model = ((EditText) findViewById(R.id.modelInput)).getText().toString();
         product.price = Double.valueOf(((EditText) findViewById(R.id.priceInput)).getText().toString());
 
-        ProductRepository.modify(product);
+        ProductRepository.modifyNonQuantityData(product);
 
         finish();
     }
 
     private void AddQuantity() {
-        product.quantity = Integer.valueOf(((EditText) findViewById(R.id.quantityChangeInput)).getText().toString());
+        product.quantity += Integer.valueOf(((EditText) findViewById(R.id.quantityChangeInput)).getText().toString());
 
-        ProductRepository.modify(product);
+        ProductRepository.modifyQuantity(product);
 
         finish();
     }

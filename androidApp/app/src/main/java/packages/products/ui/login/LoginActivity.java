@@ -15,6 +15,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
+import packages.products.BackEndRequestMaker;
 import packages.products.MainActivity;
 import packages.products.R;
 
@@ -45,6 +46,16 @@ public class LoginActivity extends AppCompatActivity{
                 }
             });
 
+            }
+        });
+
+        LoginActivity thisActivity = this;
+        findViewById(R.id.startOffline).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                BackEndRequestMaker.isOnline = false;
+                Intent intent = new Intent(thisActivity, MainActivity.class);
+                startActivity(intent);
             }
         });
 

@@ -10,8 +10,11 @@ import java.io.Serializable;
 
 @Entity(tableName = "products")
 public class Product implements Serializable {
-    @PrimaryKey()
-    public int uid;
+    @PrimaryKey(autoGenerate = true)
+    private int id;
+
+    @ColumnInfo(name = "ServerProductId")
+    public int serverProductId = -1;
 
     @ColumnInfo(name = "Manufacturer")
     public String manufacturer = null;
@@ -30,5 +33,14 @@ public class Product implements Serializable {
     {
         return manufacturer + ", " + model + ", " + quantity + ", " + price + "$";
     }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
 }
 

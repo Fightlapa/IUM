@@ -18,9 +18,15 @@ public interface ProductDao {
     @Insert
     long insert(Product Product);
 
+    @Query("SELECT * from products where id = :id LIMIT 1")
+    Product getByLocalId(int id);
+
     @Update
     void update(Product product);
 
     @Delete
     void delete(Product Product);
+
+    @Query("DELETE FROM products")
+    void deleteAll();
 }

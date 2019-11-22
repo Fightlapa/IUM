@@ -149,50 +149,23 @@ if user is None:
 def get_product(product_id):
     return Product.query.get(product_id)
 
-class UserCreate(Resource):
-    def post(self):
-        args = user_parser.parse_args()
-        un = args['username']
-        password = args['password']
-        pwd_hash = hash_password(password)
-        user = User(un, pwd_hash, args['email'])
-        db.session.add(user)
-        db.session.commit()
-
-class UserLoginEndpoint(Resource):
-    def post(self):
-        args = user_parser.parse_args()
-        un = args['username']
-        user = User.query.filter_by(username=un).one()
-        password = args['password']
-        if verify_password(user.password_hash, password):
-            session['authed_user'] = user.email
-            return redirect('/products')
-        else:
-            return {"Login error"}
-
 class GoogleLoginEndpoint(Resource):
     def post(self):
         try:
-            # Specify the CLIENT_ID of the app that accesses the backend:
-            result = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={request.json['token']}").json()
+            # result = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={request.json['token']}").json()
+            #
+            # if result['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+            #     raise ValueError('Wrong issuer.')
+            #
+            # user_email = result['email']
 
-            if result['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-                raise ValueError('Wrong issuer.')
-
-            # ID token is valid. Get the user's Google Account ID from the decoded token.
-            user_email = result['email']
-            user = User.query.filter_by(email=user_email).scalar()
-
-            if user is None:
-                user = User(user_email)
-                db.session.add(user)
-                db.session.commit()
             session.permanent = True
+            user_email = "googrle@gmail.com"
             session['authed_user'] = user_email
             if user_email == "googrle@gmail.com":
                 return "Manager"
-            return user.role
+            # return user.role
+            return "Manager"
         except ValueError:
             # Invalid token
             pass
@@ -202,20 +175,23 @@ class ProductEndpoint(Resource):
     def get(self, product_id):
         if not is_logged(session):
             return return_unauthorized()
-        return product_schema.jsonify(get_product(product_id))
+        product = get_product(product_id)
+        if product:
+            return product_schema.jsonify(product)
 
     def put(self, product_id):
         if not is_logged(session):
             return return_unauthorized()
         args = product_parser.parse_args()
         product = get_product(product_id)
-        if args['quantity'] is None:
-            product.model_name = args['model_name']
-            product.manufacturer_name = args['manufacturer_name']
-            product.price = args['price']
-        else:
-            product.quantity += args['quantity']
-        db.session.commit()
+        if product:
+            if args['quantity'] is not None:
+                product.quantity += args['quantity']
+            elif args['model_name'] is not None:
+                product.model_name = args['model_name']
+                product.manufacturer_name = args['manufacturer_name']
+                product.price = args['price']
+            db.session.commit()
 
     def delete(self, product_id):
         if not is_logged(session):
@@ -223,8 +199,9 @@ class ProductEndpoint(Resource):
         if 'authed_user' not in session:
             return redirect('/products')
         product = get_product(product_id)
-        db.session.delete(product)
-        db.session.commit()
+        if product:
+            db.session.delete(product)
+            db.session.commit()
 
 
 class ProductCreate(Resource):
@@ -247,9 +224,7 @@ class ProductList(Resource):
 api.add_resource(ProductList, '/products')
 api.add_resource(ProductEndpoint, '/product/<int:product_id>')
 api.add_resource(ProductCreate, '/product')
-api.add_resource(UserLoginEndpoint, '/login')
 api.add_resource(GoogleLoginEndpoint, '/logingoogle')
-api.add_resource(UserCreate, '/create')
 
 # --cert=certificate.crt --key=privateKey.key
 if __name__ == '__main__':
