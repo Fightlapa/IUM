@@ -70,9 +70,10 @@ public class ModifyProductActivity extends AppCompatActivity {
     }
 
     private void AddQuantity() {
-        product.quantity += Integer.valueOf(((EditText) findViewById(R.id.quantityChangeInput)).getText().toString());
+        int modifiedQuantity = Integer.valueOf(((EditText) findViewById(R.id.quantityChangeInput)).getText().toString());
+        product.quantity += modifiedQuantity;
 
-        ProductRepository.modifyQuantity(product);
+        ProductRepository.modifyQuantity(product, modifiedQuantity);
 
         finish();
     }

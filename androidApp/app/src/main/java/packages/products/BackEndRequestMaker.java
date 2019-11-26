@@ -4,6 +4,7 @@ import android.text.TextUtils;
 
 import com.google.android.gms.common.api.ApiException;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 import java.net.CookieHandler;
 import java.io.BufferedReader;
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.UUID;
 
 import static packages.products.MainActivity.productDatabase;
 
@@ -47,23 +49,34 @@ public class BackEndRequestMaker {
     public static void sendPendingRequests() {
         for (Request pendingRequest : ProductRepository.getAllRequests())
         {
-            if (pendingRequest.method.equals("POST"))
+            try
             {
-                Response response = makeCall(pendingRequest.url, pendingRequest.method, pendingRequest.jsonString);
-                Product product = ProductRepository.getByLocalID(pendingRequest.localProductId);
-                product.serverProductId = Integer.parseInt(response.body);
-                ProductRepository.updateLocalProduct(product);
+                if (pendingRequest.method.equals("POST"))
+                {
+                    Response response = makeCall(pendingRequest.url, pendingRequest.method, pendingRequest.jsonString);
+                    Product product = ProductRepository.getByLocalID(pendingRequest.localProductId);
+                    product.serverProductId = Integer.parseInt(response.body);
+                    ProductRepository.updateLocalProduct(product);
+                }
+                else if (pendingRequest.method.equals("PUT"))
+                {
+                    int serverProductId;
+                    if (pendingRequest.serverProductId == -1)
+                        serverProductId = ProductRepository.getByLocalID(pendingRequest.localProductId).serverProductId;
+                    else
+                        serverProductId = pendingRequest.serverProductId;
+                    makeCall(pendingRequest.url + serverProductId, pendingRequest.method, pendingRequest.jsonString);
+                }
+                if (pendingRequest.method.equals("DELETE") && pendingRequest.serverProductId != -1)
+                {
+                    makeCall(pendingRequest.url + pendingRequest.serverProductId, pendingRequest.method, pendingRequest.jsonString);
+                }
+                //ProductRepository.deleteRequest(pendingRequest);
             }
-            else if (pendingRequest.method.equals("PUT"))
+            catch(Exception e)
             {
-                Product product = ProductRepository.getByLocalID(pendingRequest.localProductId);
-                makeCall(pendingRequest.url + product.serverProductId, pendingRequest.method, pendingRequest.jsonString);
+
             }
-            if (pendingRequest.method.equals("DELETE") && pendingRequest.serverProductId != -1)
-            {
-                makeCall(pendingRequest.url + pendingRequest.serverProductId, pendingRequest.method, pendingRequest.jsonString);
-            }
-            ProductRepository.deleteRequest(pendingRequest);
 
         }
     }
@@ -183,6 +196,17 @@ public class BackEndRequestMaker {
     public static void saveCall(final String urlString, final String method, final JSONObject jsonObject, long localProductId, long serverProductId)
     {
         Request callData = new Request();
+        String uniqueID = UUID.randomUUID().toString();
+        callData.guid = uniqueID;
+        if (!method.equals("GET"))
+        {
+            try {
+                jsonObject.put("guid", callData.guid);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
         if (jsonObject != null)
         {
             callData.jsonString = jsonObject.toString();

@@ -20,6 +20,9 @@ public class Request implements Serializable {
     @ColumnInfo(name = "JsonString")
     public String jsonString = "";
 
+    @ColumnInfo(name = "guid")
+    public String guid = "";
+
     @ColumnInfo(name = "LocalProductId")
     public Integer localProductId = -1;
 

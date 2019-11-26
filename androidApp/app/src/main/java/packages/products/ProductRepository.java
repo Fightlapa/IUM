@@ -108,12 +108,12 @@ public class ProductRepository {
         }
     }
 
-    public static void modifyQuantity(Product product)
+    public static void modifyQuantity(Product product, int modifiedQuantity)
     {
         JSONObject jsonObject = null;
         try {
                 jsonObject = new JSONObject()
-                        .put("quantity", product.quantity);
+                        .put("quantity", modifiedQuantity);
         }
         catch (JSONException e) {
             e.printStackTrace();
@@ -126,7 +126,7 @@ public class ProductRepository {
             JSONObject finalJsonString = jsonObject;
             Thread thread = new Thread(() -> {
                 productDatabase.ProductDao().update(product);
-                saveCall("http://10.0.2.2:5000/product/", "PUT", finalJsonString, product.getId(), -1);
+                saveCall("http://10.0.2.2:5000/product/", "PUT", finalJsonString, product.getId(), product.serverProductId);
             });
             thread.start();
             try {
@@ -157,7 +157,7 @@ public class ProductRepository {
             JSONObject finalJsonString = jsonObject;
             Thread thread = new Thread(() -> {
                 productDatabase.ProductDao().update(product);
-                saveCall("http://10.0.2.2:5000/product/", "PUT", finalJsonString, product.getId(), -1);
+                saveCall("http://10.0.2.2:5000/product/", "PUT", finalJsonString, product.getId(), product.serverProductId);
             });
             thread.start();
             try {

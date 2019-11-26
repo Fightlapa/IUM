@@ -2,6 +2,7 @@ from datetime import timedelta
 from flask import Flask, jsonify, session, redirect, request
 from flask_restful import Resource, Api, reqparse
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.dialects.postgresql import UUID
 from flask_marshmallow import Marshmallow
 import hashlib
 import binascii
@@ -53,15 +54,7 @@ product_parser.add_argument('model_name', type=str)
 product_parser.add_argument('price', type=float)
 product_parser.add_argument('quantity', type=int)
 product_parser.add_argument('id', type=int)
-
-user_parser = reqparse.RequestParser()
-user_parser.add_argument('username', type=str)
-user_parser.add_argument('password', type=str)
-user_parser.add_argument('email', type=str)
-
-google_login_parser = reqparse.RequestParser()
-user_parser.add_argument('token', type=str)
-user_parser.add_argument('email', type=str)
+product_parser.add_argument('guid', type=str)
 
 @app.before_request
 def make_session_permanent():
@@ -77,6 +70,7 @@ def return_unauthorized():
     response = jsonify({'message': 'Unauthorized'})
     response.status_code = 401
     return response
+
 
 def hash_password(password):
     """Hash a password for storing."""
@@ -111,16 +105,19 @@ class Product(db.Model):
         self.price = price
         self.quantity = 0
 
+class Request(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    uuid = db.Column(db.String(36), unique=True, nullable=False)
+
+    def __init__(self, uuid):
+        self.uuid = uuid
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String, unique=True, nullable=True)
-    password_hash = db.Column(db.String, nullable=True)
     email = db.Column(db.String, unique=True)
     role = db.Column(db.String)
 
     def __init__(self, email, username=None, password_hash=None):
-        self.username = username
-        self.password_hash = password_hash
         self.email = email
         self.role = "Maintainer"
 
@@ -128,9 +125,16 @@ class ProductSchema(ma.Schema):
     class Meta:
         fields = ('id', 'manufacturer_name', 'model_name', 'price', 'quantity')
 
+class RequestSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'uuid')
+
 # Init schema
 product_schema = ProductSchema()
 products_schema = ProductSchema(many=True)
+
+request_schema = RequestSchema()
+requests_schema = RequestSchema(many=True)
 
 db.init_app(app)
 
@@ -152,15 +156,15 @@ def get_product(product_id):
 class GoogleLoginEndpoint(Resource):
     def post(self):
         try:
-            # result = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={request.json['token']}").json()
-            #
-            # if result['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-            #     raise ValueError('Wrong issuer.')
-            #
-            # user_email = result['email']
+            result = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={request.json['token']}").json()
+
+            if result['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                raise ValueError('Wrong issuer.')
+
+            user_email = result['email']
 
             session.permanent = True
-            user_email = "googrle@gmail.com"
+            #user_email = "googrle@gmail.com"
             session['authed_user'] = user_email
             if user_email == "googrle@gmail.com":
                 return "Manager"
@@ -172,6 +176,7 @@ class GoogleLoginEndpoint(Resource):
 
 
 class ProductEndpoint(Resource):
+
     def get(self, product_id):
         if not is_logged(session):
             return return_unauthorized()
@@ -183,24 +188,41 @@ class ProductEndpoint(Resource):
         if not is_logged(session):
             return return_unauthorized()
         args = product_parser.parse_args()
+
+        database_guid = Request.query.filter_by(uuid=args['guid']).scalar()
+        if database_guid is not None:
+            return
+
         product = get_product(product_id)
         if product:
-            if args['quantity'] is not None:
-                product.quantity += args['quantity']
-            elif args['model_name'] is not None:
-                product.model_name = args['model_name']
-                product.manufacturer_name = args['manufacturer_name']
-                product.price = args['price']
-            db.session.commit()
+            try:
+                if args['quantity'] is not None:
+                    product.quantity += args['quantity']
+                elif args['model_name'] is not None:
+                    product.model_name = args['model_name']
+                    product.manufacturer_name = args['manufacturer_name']
+                    product.price = args['price']
+                request = Request(args['guid'])
+                db.session.add(request)
+                db.session.commit()
+                db.session.commit()
+            except:
+                db.session.rollback()
 
     def delete(self, product_id):
         if not is_logged(session):
             return return_unauthorized()
+        args = product_parser.parse_args()
+        database_guid = Product.query.filter_by(uuid=args['guid']).scalar()
+        if database_guid is not None:
+            return
         if 'authed_user' not in session:
             return redirect('/products')
         product = get_product(product_id)
         if product:
             db.session.delete(product)
+            request = Request(args['guid'])
+            db.session.add(request)
             db.session.commit()
 
 
@@ -209,8 +231,13 @@ class ProductCreate(Resource):
         if not is_logged(session):
             return return_unauthorized()
         args = product_parser.parse_args()
+        database_guid = Product.query.filter_by(uuid=args['guid']).scalar()
+        if database_guid is not None:
+            return
         product = Product(args['manufacturer_name'], args['model_name'], args['price'])
         db.session.add(product)
+        request = Request(args['guid'])
+        db.session.add(request)
         db.session.commit()
         db.session.refresh(product)
         return product.id
