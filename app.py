@@ -204,9 +204,13 @@ class ProductEndpoint(Resource):
                     product.model_name = args['model_name']
                     product.manufacturer_name = args['manufacturer_name']
                     product.price = args['price']
-                request = Request(args['guid'])
-                db.session.add(request)
-                db.session.commit()
+                    if args['height'] is not None:
+                        product.height = args['height']
+                    if args['width'] is not None:
+                        product.width = args['width']
+                if args['guid'] is not None:
+                    request = Request(args['guid'])
+                    db.session.add(request)
                 db.session.commit()
             except:
                 db.session.rollback()
