@@ -266,8 +266,18 @@ class ProductList(Resource):
         else:
             expand = request.args['expand'].split(',')
         all_produts = Product.query.all()
-        filtered_products_schema = ProductSchema(many=True, only=expand)
-        dumped_products = filtered_products_schema.dump(all_produts)
+        #filtered_products_schema = ProductSchema(many=True, only=expand).dump(Product.query.all())
+        #dumped_products = filtered_products_schema.dump(all_produts)
+        dumped_products = products_schema.dump(all_produts)
+        if len(request.args) is 0:
+            for product in dumped_products:
+                product['model_name'] = product['model_name'] + f"({product['height']}x{product['width']})"
+                keys_to_delete = []
+                for key, value in product.items():
+                    if key not in expand:
+                        keys_to_delete.append(key)
+                for key in keys_to_delete:
+                    del product[key]
         return jsonify(dumped_products)
 
 api.add_resource(ProductList, '/products')
