@@ -25,6 +25,8 @@ public class AddProductActivity extends AppCompatActivity {
         product.manufacturer = ((EditText) findViewById(R.id.manufacturerInput)).getText().toString();
         product.model = ((EditText) findViewById(R.id.modelInput)).getText().toString();
         product.price = Double.valueOf(((EditText) findViewById(R.id.priceInput)).getText().toString());
+        product.width = Integer.valueOf(((EditText) findViewById(R.id.widthInput)).getText().toString());
+        product.height = Integer.valueOf(((EditText) findViewById(R.id.heightInput)).getText().toString());
 
         ProductRepository.insert(product);
 

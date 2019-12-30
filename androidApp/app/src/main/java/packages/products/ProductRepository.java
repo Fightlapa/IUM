@@ -1,5 +1,7 @@
 package packages.products;
 
+import android.net.Uri;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -23,7 +25,14 @@ public class ProductRepository {
         if (BackEndRequestMaker.isOnline())
         {
             BackEndRequestMaker.sendPendingRequests();
-            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/products", "GET", null);
+//            Uri.Builder builder = new Uri.Builder();
+//            builder.scheme("http")
+//                    .authority("10.0.2.2:5000")
+//                    .appendPath("products")
+//                    .appendQueryParameter("expand", "manufacturer_name,model_name,price,width,height,quantity,id");
+//            String myUrl = builder.build().toString();
+            BackEndRequestMaker.Response result = makeCall("http://10.0.2.2:5000/products?expand=manufacturer_name,model_name,price,width,height,quantity,id", "GET", null);
+//            BackEndRequestMaker.Response result = makeCall(myUrl, "GET", null);
 
             try {
                 JSONArray jsonArray = new JSONArray(result.body.trim());
@@ -42,6 +51,8 @@ public class ProductRepository {
                     product.manufacturer = obj.getString("manufacturer_name");
                     product.model = obj.getString("model_name");
                     product.price = obj.getDouble("price");
+                    product.width = obj.getInt("width");
+                    product.height = obj.getInt("height");
                     product.quantity = obj.getInt("quantity");
                     product.serverProductId = obj.getInt("id");
                     final long[] localId = new long[1];
@@ -83,7 +94,9 @@ public class ProductRepository {
             JSONObject jsonObject = new JSONObject()
                     .put("manufacturer_name", product.manufacturer)
                     .put("model_name", product.model)
-                    .put("price", product.price);
+                    .put("price", product.price)
+                    .put("width", product.width)
+                    .put("height", product.height);
 
             if (BackEndRequestMaker.isOnline())
             {
@@ -144,7 +157,9 @@ public class ProductRepository {
             jsonObject = new JSONObject()
                     .put("manufacturer_name", product.manufacturer)
                     .put("model_name", product.model)
-                    .put("price", product.price);
+                    .put("price", product.price)
+                    .put("width", product.width)
+                    .put("height", product.height);
         }
         catch (JSONException e) {
             e.printStackTrace();

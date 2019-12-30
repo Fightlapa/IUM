@@ -28,6 +28,12 @@ public class Product implements Serializable {
     @ColumnInfo(name = "Price")
     public double price = 0;
 
+    @ColumnInfo(name = "Width")
+    public int width = 0;
+
+    @ColumnInfo(name = "Height")
+    public int height = 0;
+
     @Override
     public String toString()
     {

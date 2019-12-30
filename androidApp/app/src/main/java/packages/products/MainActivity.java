@@ -18,6 +18,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
+import static packages.products.ProductDatabase.MIGRATION_5_6;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -41,7 +42,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         ((Button)findViewById(R.id.changeOnlineStatus)).setText(BackEndRequestMaker.getOnlineStatusString());
-        productDatabase = Room.databaseBuilder(getApplicationContext(), ProductDatabase.class, "products-db").fallbackToDestructiveMigration().build();
+
+        productDatabase = Room.databaseBuilder(getApplicationContext(), ProductDatabase.class, "products-db").addMigrations(MIGRATION_5_6).build();
 
         listView = findViewById(R.id.Productlist);
         arrayAdapter = new ArrayAdapter<Product>

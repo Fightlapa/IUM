@@ -2,10 +2,13 @@ from datetime import timedelta
 from flask import Flask, jsonify, session, redirect, request
 from flask_restful import Resource, Api, reqparse
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from sqlalchemy.dialects.postgresql import UUID
 from flask_marshmallow import Marshmallow
 import hashlib
 import binascii
+from urllib.parse import parse_qs
+import urllib.parse as urlparse
 from random import SystemRandom
 import requests
 import os
@@ -45,6 +48,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 # Init ma
 ma = Marshmallow(app)
+migrate = Migrate(app, db)
 
 # with app.test_request_context():
 
@@ -54,6 +58,8 @@ product_parser.add_argument('model_name', type=str)
 product_parser.add_argument('price', type=float)
 product_parser.add_argument('quantity', type=int)
 product_parser.add_argument('id', type=int)
+product_parser.add_argument('width', type=int)
+product_parser.add_argument('height', type=int)
 product_parser.add_argument('guid', type=str)
 
 @app.before_request
@@ -98,12 +104,8 @@ class Product(db.Model):
     model_name = db.Column(db.String(200))
     price = db.Column(db.Float)
     quantity = db.Column(db.Integer)
-
-    def __init__(self, manufacturer_name, model_name, price):
-        self.manufacturer_name = manufacturer_name
-        self.model_name = model_name
-        self.price = price
-        self.quantity = 0
+    width = db.Column(db.Integer, default=0)
+    height = db.Column(db.Integer, default=0)
 
 class Request(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -123,7 +125,7 @@ class User(db.Model):
 
 class ProductSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'manufacturer_name', 'model_name', 'price', 'quantity')
+        fields = ('id', 'manufacturer_name', 'model_name', 'price', 'quantity', 'width', 'height')
 
 class RequestSchema(ma.Schema):
     class Meta:
@@ -231,13 +233,26 @@ class ProductCreate(Resource):
         if not is_logged(session):
             return return_unauthorized()
         args = product_parser.parse_args()
-        database_guid = Product.query.filter_by(uuid=args['guid']).scalar()
-        if database_guid is not None:
-            return
-        product = Product(args['manufacturer_name'], args['model_name'], args['price'])
+        if args['guid'] is not None:
+            database_guid = Product.query.filter_by(uuid=args['guid']).scalar()
+            if database_guid is not None:
+                return
+        product = Product()
+        if args['manufacturer_name'] is not None:
+            product.manufacturer_name = args['manufacturer_name']
+        if args['model_name'] is not None:
+            product.model_name = args['model_name']
+        if args['price'] is not None:
+            product.price = args['price']
+        if args['width'] is not None:
+            product.width = args['width']
+        if args['height'] is not None:
+            product.height = args['height']
+        product.quantity = 0
         db.session.add(product)
-        request = Request(args['guid'])
-        db.session.add(request)
+        if args['guid'] != None:
+            request = Request(args['guid'])
+            db.session.add(request)
         db.session.commit()
         db.session.refresh(product)
         return product.id
@@ -246,7 +261,14 @@ class ProductList(Resource):
     def get(self):
         if not is_logged(session):
             return return_unauthorized()
-        return jsonify(products_schema.dump(Product.query.all()))
+        if request.args.__len__() == 0:
+            expand = ['id', 'manufacturer_name', 'model_name', 'quantity', 'price']
+        else:
+            expand = request.args['expand'].split(',')
+        all_produts = Product.query.all()
+        filtered_products_schema = ProductSchema(many=True, only=expand)
+        dumped_products = filtered_products_schema.dump(all_produts)
+        return jsonify(dumped_products)
 
 api.add_resource(ProductList, '/products')
 api.add_resource(ProductEndpoint, '/product/<int:product_id>')

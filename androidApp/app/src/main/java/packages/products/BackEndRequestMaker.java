@@ -71,7 +71,7 @@ public class BackEndRequestMaker {
                 {
                     makeCall(pendingRequest.url + pendingRequest.serverProductId, pendingRequest.method, pendingRequest.jsonString);
                 }
-                //ProductRepository.deleteRequest(pendingRequest);
+                ProductRepository.deleteRequest(pendingRequest);
             }
             catch(Exception e)
             {
