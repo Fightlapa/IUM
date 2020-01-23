@@ -11,7 +11,8 @@ public abstract class ProductDatabase extends RoomDatabase {
     public abstract ProductDao ProductDao();
     public abstract RequestDao RequestDao();
 
-    static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+
+    static final Migration MIGRATION_5_6 = new Migration(4, 6) {
         @Override
         public void migrate(SupportSQLiteDatabase database) {
             database.execSQL("ALTER TABLE products "
